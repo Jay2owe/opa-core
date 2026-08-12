@@ -193,4 +193,5 @@ Goldens live in `../../02 - Object Proximity Analysis/golden/pre-extraction/`.
 
 ## Licence
 
-BSD 3-Clause. Links `net.imagej:ij` only.
+BSD 3-Clause — see `LICENSE`, with attribution in `NOTICE`. Links
+`net.imagej:ij` only.
