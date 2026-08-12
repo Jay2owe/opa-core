@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+		http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.scijava</groupId>
+		<artifactId>pom-scijava</artifactId>
+		<version>43.0.0</version>
+		<relativePath/>
+	</parent>
+
+	<groupId>io.github.jay2owe</groupId>
+	<artifactId>opa-core</artifactId>
+	<version>0.2.0</version>
+
+	<name>opa-core</name>
+	<description>Object proximity and 2D point-pattern engine, as an embeddable module. Never shipped as a jar.</description>
+	<url>https://github.com/Jay2owe/ObjectProximityAnalysis</url>
+	<inceptionYear>2026</inceptionYear>
+
+	<organization>
+		<name>UK Dementia Research Institute at Imperial College London</name>
+		<url>https://ukdri.ac.uk/centres/imperial</url>
+	</organization>
+	<licenses>
+		<license>
+			<name>BSD 3-Clause License</name>
+			<url>https://opensource.org/licenses/BSD-3-Clause</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+	<developers>
+		<developer>
+			<id>Jay2owe</id>
+			<name>Jamie Malcolm</name>
+			<email>jamiemalcolm12@gmail.com</email>
+			<url>https://github.com/Jay2owe</url>
+			<organization>UK Dementia Research Institute at Imperial College London</organization>
+			<organizationUrl>https://www.ukdri.ac.uk/labs/brancaccio-lab</organizationUrl>
+			<properties>
+				<orcid>0009-0008-3862-2776</orcid>
+			</properties>
+			<roles>
+				<role>founder</role>
+				<role>lead</role>
+				<role>developer</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>Jamie Malcolm</name>
+			<url>https://github.com/Jay2owe</url>
+			<properties><id>Jay2owe</id></properties>
+		</contributor>
+	</contributors>
+	<mailingLists>
+		<mailingList>
+			<name>Image.sc Forum</name>
+			<archive>https://forum.image.sc/tag/imagej</archive>
+		</mailingList>
+	</mailingLists>
+
+	<scm>
+		<connection>scm:git:https://github.com/Jay2owe/ObjectProximityAnalysis</connection>
+		<developerConnection>scm:git:git@github.com:Jay2owe/ObjectProximityAnalysis</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/Jay2owe/ObjectProximityAnalysis</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/Jay2owe/ObjectProximityAnalysis/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>GitHub Actions</system>
+		<url>https://github.com/Jay2owe/ObjectProximityAnalysis/actions</url>
+	</ciManagement>
+
+	<properties>
+		<package-name>sc.fiji.opa.core</package-name>
+		<license.licenseName>bsd_3</license.licenseName>
+		<license.copyrightOwners>Jamie Malcolm</license.copyrightOwners>
+		<!-- No main class: this module is a library, never a plugin. -->
+		<enforcer.skip>true</enforcer.skip>
+	</properties>
+
+	<repositories>
+		<repository>
+			<id>scijava.public</id>
+			<url>https://maven.scijava.org/content/groups/public</url>
+		</repository>
+	</repositories>
+
+	<dependencies>
+		<!--
+		  The entire dependency list.
+
+		  net.imagej:ij only, and only for three things: ImagePlus/ImageStack/
+		  ImageProcessor to read a label stack, ij.measure.Calibration to read
+		  voxel size, and IJ.escapePressed() as the cancellation poll. No
+		  ResultsTable, no GenericDialog, no Swing, no IJ.error/log/showMessage
+		  on any path — asserted by HeadlessContractTest.
+
+		  Declared directly rather than inherited: oc3d-core declares ij at
+		  `provided` scope and Maven does not propagate `provided` transitively,
+		  so nothing would reach this module's compile classpath. Same scope and
+		  the same pom-scijava 43.0.0 parent the plugin uses, so both resolve
+		  the identical ij build — which a bit-identity gate depends on.
+
+		  oc3d-core is deliberately NOT declared. This engine's input is a
+		  finished label image; ROI and label ingest belong to the chassis and
+		  stay on the plugin side. An unused dependency would be shaded into
+		  every consumer as dead code. See DECISIONS.md.
+		-->
+		<dependency>
+			<groupId>net.imagej</groupId>
+			<artifactId>ij</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>false</addClasspath>
+						</manifest>
+						<manifestEntries>
+							<Automatic-Module-Name>io.github.jay2owe.opa.core</Automatic-Module-Name>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
