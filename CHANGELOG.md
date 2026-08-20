@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.3.0] - 2026-08-20
+
+### Fixed
+
+- **The pointwise Monte Carlo envelope was anti-conservative.** It was built
+  from the linearly interpolated 2.5th and 97.5th percentiles of the simulated
+  values, then compared against an observed curve that was not among them. That
+  band was labelled 95% but escaped 6.9% of the time at 99 simulations and 9.6%
+  at 39, because an interpolated percentile of S values does not land on the
+  rank boundary a 5% escape rate requires.
+
+  It is now a rank envelope: the k-th smallest and k-th largest simulated
+  value, whose pointwise escape probability is exactly `2k / (S + 1)` when the
+  observed curve is exchangeable with the simulations.
+
+  Measured, not reasoned about. `EnvelopeCalibrationStudy` in the test sources
+  runs 1,000 complete-spatial-randomness patterns through the analyzer and
+  reports per-radius escape rates, binned uniformity of the global p-value and
+  empirical Type I error. The full record is in `VALIDATION_PLAN.md` and
+  `V2_FINDINGS.md` in the Object Proximity Analysis plugin.
+
+  The global maximum-deviation p-value was already correctly calibrated —
+  empirical Type I error 0.038 to 0.048 across five function/correction pairs —
+  and is unchanged.
+
+### Added
+
+- **`MonteCarloResult.getEnvelopeLevel()`**, `getEnvelopeRank()` and
+  `getEnvelopeConfidencePercent()`. The level a rank envelope delivers is
+  `2k / (S + 1)`, which equals the requested 5% only when `S + 1` is a multiple
+  of 40 — that is, at 39, 79, 119, 159 or 199 simulations. Callers must display
+  the delivered level rather than assuming 95%, so it is now part of the result
+  rather than something a caller has to know.
+
+- `MonteCarloAnalyzer.NOMINAL_ENVELOPE_ALPHA`, the level the rank aims for.
+
+### Changed
+
+- The envelope rank rounds **down**, so where the requested level cannot be
+  expressed the envelope errs wide rather than narrow. At 99 simulations it
+  delivers 4%, not 6%.
+
 ## [0.2.0] - 2026-08-11
 
 ### Added

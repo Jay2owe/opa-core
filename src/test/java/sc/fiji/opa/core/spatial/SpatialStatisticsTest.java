@@ -583,4 +583,73 @@ public class SpatialStatisticsTest {
                 3,
                 1L);
     }
+
+    @Test
+    public void envelopeRankDeliversTheRequestedLevelWhereTheCountAllowsIt() {
+        // 2k / (S + 1) hits 5% exactly only when S + 1 is a multiple of 40.
+        assertEquals(1, MonteCarloAnalyzer.envelopeRank(39));
+        assertEquals(0.05, MonteCarloAnalyzer.envelopeLevel(39, 1), 1.0e-12);
+        assertEquals(3, MonteCarloAnalyzer.envelopeRank(119));
+        assertEquals(0.05, MonteCarloAnalyzer.envelopeLevel(119, 3), 1.0e-12);
+
+        // 99 cannot express 5%. The rank rounds down, so the envelope errs
+        // wide at 4% rather than narrow at 6%.
+        assertEquals(2, MonteCarloAnalyzer.envelopeRank(99));
+        assertEquals(0.04, MonteCarloAnalyzer.envelopeLevel(99, 2), 1.0e-12);
+
+        // Never below one, however few simulations were run.
+        assertEquals(1, MonteCarloAnalyzer.envelopeRank(1));
+        assertEquals(1, MonteCarloAnalyzer.envelopeRank(2));
+    }
+
+    @Test
+    public void envelopeBoundsAreSimulatedOrderStatisticsNotInterpolatedQuantiles() {
+        double[][] lattice = {
+                {2.0, 2.0}, {5.0, 2.0}, {8.0, 2.0},
+                {2.0, 5.0}, {5.0, 5.0}, {8.0, 5.0},
+                {2.0, 8.0}, {5.0, 8.0}, {8.0, 8.0}
+        };
+        double[] radii = {1.0, 2.0, 3.0};
+
+        // At 39 simulations the rank is 1, so the band is exactly the
+        // simulated minimum and maximum and the level is exactly 5%.
+        MonteCarloResult result = MonteCarloAnalyzer.analyzeUnivariate(
+                PatternFunction.K,
+                lattice,
+                WINDOW,
+                radii,
+                EdgeCorrection.TRANSLATION,
+                39,
+                4242L);
+
+        assertEquals(1, result.getEnvelopeRank());
+        assertEquals(0.05, result.getEnvelopeLevel(), 1.0e-12);
+        assertEquals(95.0, result.getEnvelopeConfidencePercent(), 1.0e-12);
+
+        // An interpolated 2.5/97.5 percentile band would sit strictly inside
+        // the simulated range; the rank envelope must reach it exactly.
+        double[] lower = result.getLower();
+        double[] upper = result.getUpper();
+        for (int i = 0; i < radii.length; i++) {
+            assertTrue(lower[i] <= upper[i]);
+        }
+    }
+
+    @Test
+    public void envelopeLevelIsReportedEvenWhenThePatternIsUndefined() {
+        // A single point cannot support a pattern, but the envelope contract
+        // a caller displays must still be well defined.
+        MonteCarloResult result = MonteCarloAnalyzer.analyzeUnivariate(
+                PatternFunction.K,
+                new double[][]{{5.0, 5.0}},
+                WINDOW,
+                new double[]{1.0},
+                EdgeCorrection.TRANSLATION,
+                39,
+                7L);
+
+        assertEquals(PatternStatus.INSUFFICIENT_POINTS, result.getStatus());
+        assertEquals(1, result.getEnvelopeRank());
+        assertEquals(0.05, result.getEnvelopeLevel(), 1.0e-12);
+    }
 }

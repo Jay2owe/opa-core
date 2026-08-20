@@ -26,6 +26,12 @@ import java.util.concurrent.TimeUnit;
  */
 public final class MonteCarloAnalyzer {
 
+    /**
+     * Pointwise escape probability the envelope aims for. The level actually
+     * delivered depends on the simulation count; see {@link #envelopeRank}.
+     */
+    public static final double NOMINAL_ENVELOPE_ALPHA = 0.05;
+
     private MonteCarloAnalyzer() {
     }
 
@@ -163,6 +169,7 @@ public final class MonteCarloAnalyzer {
         double[] upper = new double[radiusCount];
         int[] envelopeSampleCounts = new int[radiusCount];
 
+        int envelopeRank = envelopeRank(simulations);
         for (int radiusIndex = 0; radiusIndex < radiusCount; radiusIndex++) {
             checkCancelled();
             double[] finite = finiteColumn(samples, radiusIndex);
@@ -173,8 +180,8 @@ public final class MonteCarloAnalyzer {
                 continue;
             }
             Arrays.sort(finite);
-            lower[radiusIndex] = percentile(finite, 0.025);
-            upper[radiusIndex] = percentile(finite, 0.975);
+            lower[radiusIndex] = finite[envelopeRank - 1];
+            upper[radiusIndex] = finite[finite.length - envelopeRank];
         }
 
         double[] exchangeableScales = exchangeableScales(observed, samples);
@@ -251,6 +258,8 @@ public final class MonteCarloAnalyzer {
                 lower,
                 upper,
                 envelopeSampleCounts,
+                envelopeRank,
+                envelopeLevel(simulations, envelopeRank),
                 globalP,
                 maximumDeviation,
                 maximumRadius,
@@ -306,6 +315,7 @@ public final class MonteCarloAnalyzer {
         double[] undefined = new double[radii.length];
         Arrays.fill(undefined, Double.NaN);
         int[] envelopeSampleCounts = new int[radii.length];
+        int envelopeRank = envelopeRank(simulations);
         return new MonteCarloResult(
                 function,
                 radii,
@@ -314,6 +324,8 @@ public final class MonteCarloAnalyzer {
                 undefined,
                 undefined,
                 envelopeSampleCounts,
+                envelopeRank,
+                envelopeLevel(simulations, envelopeRank),
                 Double.NaN,
                 Double.NaN,
                 Double.NaN,
@@ -592,14 +604,38 @@ public final class MonteCarloAnalyzer {
         return found ? maximum : Double.NaN;
     }
 
-    private static double percentile(double[] sorted, double quantile) {
-        if (sorted.length == 1) return sorted[0];
-        double position = quantile * (sorted.length - 1);
-        int lower = (int) Math.floor(position);
-        int upper = (int) Math.ceil(position);
-        if (lower == upper) return sorted[lower];
-        double fraction = position - lower;
-        return sorted[lower] + fraction * (sorted[upper] - sorted[lower]);
+    /**
+     * How far in from each end of the sorted simulated values the pointwise
+     * envelope is drawn.
+     *
+     * <p>Taking the k-th smallest and k-th largest of S simulated values gives
+     * an envelope whose pointwise escape probability is exactly
+     * {@code 2k / (S + 1)} when the observed curve is exchangeable with the
+     * simulations, because the observed curve's rank among all S+1 curves is
+     * then uniform. This replaces an earlier construction that interpolated
+     * the 2.5th and 97.5th percentiles of the S simulated values: that band
+     * looked like a 95% envelope but escaped 6.9% of the time at S=99 and
+     * 9.6% at S=39, because an interpolated percentile of S values does not
+     * land on the rank boundary a 5% escape rate requires. Measured in
+     * {@code EnvelopeCalibrationStudy}; see the validation record in the
+     * Object Proximity Analysis plugin.</p>
+     *
+     * <p>The rank is rounded down so that the envelope errs wide, and it is
+     * never less than one. {@link #envelopeLevel} reports the level actually
+     * achieved, which equals {@link #NOMINAL_ENVELOPE_ALPHA} exactly only when
+     * {@code S + 1} is a multiple of {@code 2 / alpha} — for the default 5%
+     * that means 39, 79, 119, 159 or 199 simulations. Callers should display
+     * the achieved level rather than assuming the nominal one.</p>
+     */
+    static int envelopeRank(int simulations) {
+        int rank = (int) Math.floor(
+                NOMINAL_ENVELOPE_ALPHA * (simulations + 1) / 2.0);
+        return Math.max(1, Math.min(rank, (simulations + 1) / 2));
+    }
+
+    /** Pointwise escape probability the chosen rank actually delivers. */
+    static double envelopeLevel(int simulations, int rank) {
+        return 2.0 * rank / (simulations + 1);
     }
 
     private static double mean(double[] values) {

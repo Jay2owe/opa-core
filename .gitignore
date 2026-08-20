@@ -2,3 +2,6 @@ target/
 
 # Internal working documents are not part of the public repository.
 /DECISIONS.md
+
+# Generated validation-study output (V2 calibration and later stages).
+validation/

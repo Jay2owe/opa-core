@@ -20,6 +20,8 @@ public final class MonteCarloResult {
     private final double[] lower;
     private final double[] upper;
     private final int[] envelopeSampleCounts;
+    private final int envelopeRank;
+    private final double envelopeLevel;
     private final double globalPValue;
     private final double maximumDeviation;
     private final double maximumDeviationRadius;
@@ -35,6 +37,8 @@ public final class MonteCarloResult {
                      double[] lower,
                      double[] upper,
                      int[] envelopeSampleCounts,
+                     int envelopeRank,
+                     double envelopeLevel,
                      double globalPValue,
                      double maximumDeviation,
                      double maximumDeviationRadius,
@@ -49,6 +53,8 @@ public final class MonteCarloResult {
         this.lower = copy(lower);
         this.upper = copy(upper);
         this.envelopeSampleCounts = copy(envelopeSampleCounts);
+        this.envelopeRank = envelopeRank;
+        this.envelopeLevel = envelopeLevel;
         this.globalPValue = globalPValue;
         this.maximumDeviation = maximumDeviation;
         this.maximumDeviationRadius = maximumDeviationRadius;
@@ -87,6 +93,32 @@ public final class MonteCarloResult {
      */
     public int[] getEnvelopeSampleCounts() {
         return copy(envelopeSampleCounts);
+    }
+
+    /**
+     * How far in from each end of the sorted simulated curves the pointwise
+     * envelope was drawn: 1 means the simulated minimum and maximum.
+     */
+    public int getEnvelopeRank() {
+        return envelopeRank;
+    }
+
+    /**
+     * Pointwise escape probability the envelope actually delivers, which is
+     * {@code 2 * rank / (simulations + 1)}.
+     *
+     * <p>Report this rather than a nominal 95%: the two coincide only when the
+     * simulation count allows the requested level to be expressed exactly. At
+     * the historical default of 99 simulations, for instance, 5% is not
+     * reachable and the envelope delivers 4%.</p>
+     */
+    public double getEnvelopeLevel() {
+        return envelopeLevel;
+    }
+
+    /** Pointwise confidence the envelope delivers, as a percentage. */
+    public double getEnvelopeConfidencePercent() {
+        return 100.0 * (1.0 - envelopeLevel);
     }
 
     public boolean hasCompletePointwiseEnvelope() {
