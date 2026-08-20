@@ -1,5 +1,7 @@
 # opa-core
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21933299.svg)](https://doi.org/10.5281/zenodo.21933299)
+
 Object Proximity Analysis's engine, as an embeddable module.
 
 **Status (2026-08-11): 0.2.0, built, adopted and shipping inside the plugin.**
@@ -190,6 +192,12 @@ Gated by 546 golden dumps captured from the pre-extraction build and immutable
 since — 32 corpus cases x 17 configurations, plus the engine surface called
 directly and the complete rejection vocabulary asserted by message text.
 Goldens live in `../../02 - Object Proximity Analysis/golden/pre-extraction/`.
+
+## Citation
+
+> Malcolm, J. (2026). *opa-core: Embeddable object proximity and spatial
+> point-pattern engine* (Version 0.2.0) [Computer software]. Zenodo.
+> https://doi.org/10.5281/zenodo.21933300
 
 ## Licence
 
