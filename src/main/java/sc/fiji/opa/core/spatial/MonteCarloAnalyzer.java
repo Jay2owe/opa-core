@@ -637,9 +637,9 @@ public final class MonteCarloAnalyzer {
      * the 2.5th and 97.5th percentiles of the S simulated values: that band
      * looked like a 95% envelope but escaped 6.9% of the time at S=99 and
      * 9.6% at S=39, because an interpolated percentile of S values does not
-     * land on the rank boundary a 5% escape rate requires. Measured in
-     * {@code EnvelopeCalibrationStudy}; see the validation record in the
-     * Object Proximity Analysis plugin.</p>
+     * land on the rank boundary a 5% escape rate requires. Measured by
+     * {@code EnvelopeCalibrationStudy} in this module's test sources, over
+     * 1,000 complete-spatial-randomness patterns.</p>
      *
      * <p>The rank is rounded down so that the envelope errs wide, and it is
      * never less than one. {@link #envelopeLevel} reports the level actually

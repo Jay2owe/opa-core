@@ -18,8 +18,10 @@
   Measured, not reasoned about. `EnvelopeCalibrationStudy` in the test sources
   runs 1,000 complete-spatial-randomness patterns through the analyzer and
   reports per-radius escape rates, binned uniformity of the global p-value and
-  empirical Type I error. The full record is in `VALIDATION_PLAN.md` and
-  `V2_FINDINGS.md` in the Object Proximity Analysis plugin.
+  empirical Type I error. Before the fix, pooled per-radius escape was 0.061 to
+  0.072 against a nominal 0.050 across K/translation, K/border, L/translation,
+  G/border and pair-correlation/translation. After it, at 119 simulations, the
+  four non-saturating cases sit at 0.045 to 0.054.
 
   The global maximum-deviation p-value was already correctly calibrated —
   empirical Type I error 0.038 to 0.048 across five function/correction pairs —
