@@ -32,6 +32,19 @@ public final class MonteCarloAnalyzer {
      */
     public static final double NOMINAL_ENVELOPE_ALPHA = 0.05;
 
+    /**
+     * Expected value of G past which a radius is treated as saturated.
+     *
+     * <p>Nearest-neighbour G is a cumulative distribution, so it climbs to 1
+     * and stops. Once nearly every point has a neighbour inside r, the
+     * simulated curves all take the same value there, the pointwise envelope
+     * collapses to a point, and the radius can neither be escaped nor
+     * contribute to the global test. That is correct behaviour, but a user who
+     * asked for those radii is getting nothing back from them and should be
+     * told rather than left to wonder why the band went flat.</p>
+     */
+    public static final double G_SATURATION_EXPECTATION = 0.99;
+
     private MonteCarloAnalyzer() {
     }
 
@@ -80,7 +93,8 @@ public final class MonteCarloAnalyzer {
                     expected,
                     simulations,
                     seed,
-                    PatternStatus.INSUFFICIENT_POINTS);
+                    PatternStatus.INSUFFICIENT_POINTS,
+                    saturationRadius(function, intensity));
             checkCancelled();
             return result;
         }
@@ -89,7 +103,8 @@ public final class MonteCarloAnalyzer {
                 function, points.length, window, radii, correction,
                 simulations, seed, progress);
         MonteCarloResult result = summarize(
-                function, radii, observed, expected, samples, simulations, seed);
+                function, radii, observed, expected, samples, simulations, seed,
+                saturationRadius(function, intensity));
         checkCancelled();
         return result;
     }
@@ -143,7 +158,8 @@ public final class MonteCarloAnalyzer {
                     expected,
                     simulations,
                     seed,
-                    PatternStatus.INSUFFICIENT_POINTS);
+                    PatternStatus.INSUFFICIENT_POINTS,
+                    saturationRadius(function, targetIntensity));
             checkCancelled();
             return result;
         }
@@ -152,7 +168,8 @@ public final class MonteCarloAnalyzer {
                 function, source.length, target.length, window, radii,
                 correction, simulations, seed, progress);
         MonteCarloResult result = summarize(
-                function, radii, observed, expected, samples, simulations, seed);
+                function, radii, observed, expected, samples, simulations, seed,
+                saturationRadius(function, targetIntensity));
         checkCancelled();
         return result;
     }
@@ -163,7 +180,8 @@ public final class MonteCarloAnalyzer {
                                               double[] expected,
                                               double[][] samples,
                                               int simulations,
-                                              long seed) {
+                                              long seed,
+                                              double saturationRadius) {
         int radiusCount = radii.length;
         double[] lower = new double[radiusCount];
         double[] upper = new double[radiusCount];
@@ -260,6 +278,7 @@ public final class MonteCarloAnalyzer {
                 envelopeSampleCounts,
                 envelopeRank,
                 envelopeLevel(simulations, envelopeRank),
+                saturationRadius,
                 globalP,
                 maximumDeviation,
                 maximumRadius,
@@ -311,7 +330,8 @@ public final class MonteCarloAnalyzer {
                                               double[] expected,
                                               int simulations,
                                               long seed,
-                                              PatternStatus status) {
+                                              PatternStatus status,
+                                              double saturationRadius) {
         double[] undefined = new double[radii.length];
         Arrays.fill(undefined, Double.NaN);
         int[] envelopeSampleCounts = new int[radii.length];
@@ -326,6 +346,7 @@ public final class MonteCarloAnalyzer {
                 envelopeSampleCounts,
                 envelopeRank,
                 envelopeLevel(simulations, envelopeRank),
+                saturationRadius,
                 Double.NaN,
                 Double.NaN,
                 Double.NaN,
@@ -631,6 +652,24 @@ public final class MonteCarloAnalyzer {
         int rank = (int) Math.floor(
                 NOMINAL_ENVELOPE_ALPHA * (simulations + 1) / 2.0);
         return Math.max(1, Math.min(rank, (simulations + 1) / 2));
+    }
+
+    /**
+     * Radius past which a nearest-neighbour curve has effectively saturated,
+     * or NaN for functions that do not saturate.
+     *
+     * <p>Under complete spatial randomness G(r) = 1 - exp(-lambda*pi*r^2), so
+     * the radius at which it reaches {@link #G_SATURATION_EXPECTATION} is
+     * {@code sqrt(-ln(1 - threshold) / (lambda * pi))}. Only G and cross-G
+     * saturate; K and its derived curves grow without bound.</p>
+     */
+    static double saturationRadius(PatternFunction function, double intensity) {
+        if (function != PatternFunction.G && function != PatternFunction.CROSS_G) {
+            return Double.NaN;
+        }
+        if (!(intensity > 0.0) || !Double.isFinite(intensity)) return Double.NaN;
+        return Math.sqrt(
+                -Math.log(1.0 - G_SATURATION_EXPECTATION) / (intensity * Math.PI));
     }
 
     /** Pointwise escape probability the chosen rank actually delivers. */

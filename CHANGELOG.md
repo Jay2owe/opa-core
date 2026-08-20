@@ -36,6 +36,23 @@
 
 - `MonteCarloAnalyzer.NOMINAL_ENVELOPE_ALPHA`, the level the rank aims for.
 
+- **`MonteCarloResult.getSaturationRadius()`**, `getSaturatedRadiusCount()` and
+  `hasSaturatedRadii()`. Nearest-neighbour G is a cumulative distribution, so it
+  climbs to 1 and stops. Past that point every simulated curve takes the same
+  value, the pointwise band collapses to a point and the radius can neither be
+  escaped nor contribute to the global test. The results are not wrong, they are
+  empty, and a caller now has the means to say so instead of presenting a flat
+  envelope as a finding.
+
+  Under complete spatial randomness G(r) = 1 - exp(-lambda*pi*r^2), so the
+  radius at which it reaches 0.99 is `sqrt(ln(100) / (lambda * pi))`. Only G and
+  cross-G report one; K and its derived curves grow without bound and return
+  NaN.
+
+  Radii past saturation are **warned about, not dropped**. Every requested
+  radius still comes back, because silently changing what someone asked for is
+  worse than telling them it will not help.
+
 ### Changed
 
 - The envelope rank rounds **down**, so where the requested level cannot be

@@ -652,4 +652,81 @@ public class SpatialStatisticsTest {
         assertEquals(1, result.getEnvelopeRank());
         assertEquals(0.05, result.getEnvelopeLevel(), 1.0e-12);
     }
+
+    @Test
+    public void onlyNearestNeighbourCurvesReportASaturationRadius() {
+        // K and its derived curves grow without bound, so nothing saturates.
+        assertTrue(Double.isNaN(
+                MonteCarloAnalyzer.saturationRadius(PatternFunction.K, 1.0e-4)));
+        assertTrue(Double.isNaN(MonteCarloAnalyzer.saturationRadius(
+                PatternFunction.PAIR_CORRELATION, 1.0e-4)));
+
+        // G(r) = 1 - exp(-lambda*pi*r^2) reaches 0.99 at sqrt(ln(100)/(lambda*pi)).
+        double intensity = 2.0e-4;
+        double expected = Math.sqrt(Math.log(100.0) / (intensity * Math.PI));
+        assertEquals(expected,
+                MonteCarloAnalyzer.saturationRadius(PatternFunction.G, intensity),
+                1.0e-9);
+        assertEquals(expected,
+                MonteCarloAnalyzer.saturationRadius(
+                        PatternFunction.CROSS_G, intensity),
+                1.0e-9);
+
+        // A degenerate intensity has no saturation radius rather than infinity.
+        assertTrue(Double.isNaN(
+                MonteCarloAnalyzer.saturationRadius(PatternFunction.G, 0.0)));
+    }
+
+    @Test
+    public void saturatedRadiiAreCountedAndReportedNotSilentlyDropped() {
+        // Nine points in a 10x10 window: dense enough that the far radii are
+        // well past the point where every point already has a neighbour.
+        double[][] lattice = {
+                {2.0, 2.0}, {5.0, 2.0}, {8.0, 2.0},
+                {2.0, 5.0}, {5.0, 5.0}, {8.0, 5.0},
+                {2.0, 8.0}, {5.0, 8.0}, {8.0, 8.0}
+        };
+        double[] radii = {0.5, 1.0, 2.0, 4.0, 8.0};
+        MonteCarloResult result = MonteCarloAnalyzer.analyzeUnivariate(
+                PatternFunction.G,
+                lattice,
+                WINDOW,
+                radii,
+                EdgeCorrection.BORDER,
+                39,
+                99L);
+
+        double saturation = result.getSaturationRadius();
+        assertTrue("G must report a saturation radius",
+                Double.isFinite(saturation));
+        assertTrue(result.hasSaturatedRadii());
+
+        int expected = 0;
+        for (double r : radii) if (r >= saturation) expected++;
+        assertEquals(expected, result.getSaturatedRadiusCount());
+
+        // Warned about, not removed: every requested radius still comes back.
+        assertEquals(radii.length, result.getRadii().length);
+        assertEquals(radii.length, result.getObserved().length);
+    }
+
+    @Test
+    public void curvesThatCannotSaturateReportNoSaturatedRadii() {
+        double[][] lattice = {
+                {2.0, 2.0}, {5.0, 2.0}, {8.0, 2.0},
+                {2.0, 5.0}, {5.0, 5.0}, {8.0, 5.0}
+        };
+        MonteCarloResult result = MonteCarloAnalyzer.analyzeUnivariate(
+                PatternFunction.K,
+                lattice,
+                WINDOW,
+                new double[]{1.0, 2.0, 3.0},
+                EdgeCorrection.TRANSLATION,
+                39,
+                5L);
+
+        assertTrue(Double.isNaN(result.getSaturationRadius()));
+        assertEquals(0, result.getSaturatedRadiusCount());
+        assertTrue(!result.hasSaturatedRadii());
+    }
 }

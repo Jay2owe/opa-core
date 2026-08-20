@@ -22,6 +22,7 @@ public final class MonteCarloResult {
     private final int[] envelopeSampleCounts;
     private final int envelopeRank;
     private final double envelopeLevel;
+    private final double saturationRadius;
     private final double globalPValue;
     private final double maximumDeviation;
     private final double maximumDeviationRadius;
@@ -39,6 +40,7 @@ public final class MonteCarloResult {
                      int[] envelopeSampleCounts,
                      int envelopeRank,
                      double envelopeLevel,
+                     double saturationRadius,
                      double globalPValue,
                      double maximumDeviation,
                      double maximumDeviationRadius,
@@ -55,6 +57,7 @@ public final class MonteCarloResult {
         this.envelopeSampleCounts = copy(envelopeSampleCounts);
         this.envelopeRank = envelopeRank;
         this.envelopeLevel = envelopeLevel;
+        this.saturationRadius = saturationRadius;
         this.globalPValue = globalPValue;
         this.maximumDeviation = maximumDeviation;
         this.maximumDeviationRadius = maximumDeviationRadius;
@@ -119,6 +122,35 @@ public final class MonteCarloResult {
     /** Pointwise confidence the envelope delivers, as a percentage. */
     public double getEnvelopeConfidencePercent() {
         return 100.0 * (1.0 - envelopeLevel);
+    }
+
+    /**
+     * Radius past which this curve has effectively saturated, or NaN when the
+     * function does not saturate.
+     *
+     * <p>Only nearest-neighbour G and cross-G saturate. Past this radius
+     * almost every point already has a neighbour, the simulated curves tie, the
+     * pointwise band collapses and the radius stops discriminating. Results
+     * there are not wrong, they are empty, and callers should say so rather
+     * than presenting a flat envelope as a finding.</p>
+     */
+    public double getSaturationRadius() {
+        return saturationRadius;
+    }
+
+    /** How many requested radii lie past {@link #getSaturationRadius()}. */
+    public int getSaturatedRadiusCount() {
+        if (Double.isNaN(saturationRadius)) return 0;
+        int count = 0;
+        for (double radius : radii) {
+            if (radius >= saturationRadius) count++;
+        }
+        return count;
+    }
+
+    /** True when any requested radius is past saturation. */
+    public boolean hasSaturatedRadii() {
+        return getSaturatedRadiusCount() > 0;
     }
 
     public boolean hasCompletePointwiseEnvelope() {
