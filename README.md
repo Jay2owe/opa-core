@@ -4,11 +4,10 @@
 
 Object Proximity Analysis's engine, as an embeddable module.
 
-**Status (2026-08-11): 0.2.0, built, adopted and shipping inside the plugin.**
-60 tests green here; Object Proximity Analysis runs on it, its own copy of the
-engine deleted, 87 tests green and **674 golden dumps green — the 546 from
-before the extraction unmoved bit-for-bit, plus 128 new ones covering cross
-pair correlation.**
+**Status (2026-09-28): 0.3.0, released and shipping inside the plugin.**
+Adds the rank Monte Carlo envelope with its delivered level, and the
+nearest-neighbour saturation radius. Object Proximity Analysis runs on it with
+87 tests green and **672 golden dumps green, bit-for-bit.**
 
 **Pattern:** `../PLUGIN_CORE_PATTERN.md`
 **Depends on:** `net.imagej:ij` only. **Not** `oc3d-core` — this engine's input
@@ -54,7 +53,7 @@ exists to prevent.
 <dependency>
   <groupId>io.github.jay2owe</groupId>
   <artifactId>opa-core</artifactId>
-  <version>0.2.0</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -196,7 +195,7 @@ Goldens live in `../../02 - Object Proximity Analysis/golden/pre-extraction/`.
 ## Citation
 
 > Malcolm, J. (2026). *opa-core: Embeddable object proximity and spatial
-> point-pattern engine* (Version 0.2.0) [Computer software]. Zenodo.
+> point-pattern engine* (Version 0.3.0) [Computer software]. Zenodo.
 > https://doi.org/10.5281/zenodo.21933300
 
 ## Licence
