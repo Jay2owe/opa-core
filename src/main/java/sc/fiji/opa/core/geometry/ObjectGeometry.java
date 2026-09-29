@@ -24,6 +24,13 @@ public final class ObjectGeometry {
     private final List<SurfaceElement> surface;
     private final double surfaceArea;
     private final int[] voxelIndices;
+    // Bounding box of the surface faces, for exact lower bounds on distances.
+    private final double boxMinX;
+    private final double boxMaxX;
+    private final double boxMinY;
+    private final double boxMaxY;
+    private final double boxMinZ;
+    private final double boxMaxZ;
 
     ObjectGeometry(int label,
                    int voxelCount,
@@ -44,6 +51,26 @@ public final class ObjectGeometry {
         double area = 0.0;
         for (SurfaceElement element : surface) area += element.area;
         this.surfaceArea = area;
+        double minX = Double.POSITIVE_INFINITY;
+        double maxX = Double.NEGATIVE_INFINITY;
+        double minY = Double.POSITIVE_INFINITY;
+        double maxY = Double.NEGATIVE_INFINITY;
+        double minZ = Double.POSITIVE_INFINITY;
+        double maxZ = Double.NEGATIVE_INFINITY;
+        for (SurfaceElement element : surface) {
+            minX = Math.min(minX, element.minX);
+            maxX = Math.max(maxX, element.maxX);
+            minY = Math.min(minY, element.minY);
+            maxY = Math.max(maxY, element.maxY);
+            minZ = Math.min(minZ, element.minZ);
+            maxZ = Math.max(maxZ, element.maxZ);
+        }
+        this.boxMinX = minX;
+        this.boxMaxX = maxX;
+        this.boxMinY = minY;
+        this.boxMaxY = maxY;
+        this.boxMinZ = minZ;
+        this.boxMaxZ = maxZ;
     }
 
     public int getLabel() {
@@ -80,6 +107,34 @@ public final class ObjectGeometry {
 
     int[] voxelIndices() {
         return voxelIndices;
+    }
+
+    boolean hasSurface() {
+        return !surface.isEmpty();
+    }
+
+    double boxMinX() {
+        return boxMinX;
+    }
+
+    double boxMaxX() {
+        return boxMaxX;
+    }
+
+    double boxMinY() {
+        return boxMinY;
+    }
+
+    double boxMaxY() {
+        return boxMaxY;
+    }
+
+    double boxMinZ() {
+        return boxMinZ;
+    }
+
+    double boxMaxZ() {
+        return boxMaxZ;
     }
 
     ObjectGeometry withEffectiveWindow(RectangularWindow window) {
