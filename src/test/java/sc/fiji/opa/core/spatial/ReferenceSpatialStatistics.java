@@ -12,9 +12,13 @@ import sc.fiji.opa.core.AnalysisCancelledException;
  * Two-dimensional point-pattern statistics with ImageJ Escape-key
  * cancellation checks in long-running loops.
  */
-public final class SpatialStatistics {
+/**
+ * Verbatim copy of the 0.3.0 {@code SpatialStatistics}, kept as the oracle
+ * the single-pass K must match bit for bit. Do not optimise.
+ */
+final class ReferenceSpatialStatistics {
 
-    private SpatialStatistics() {
+    private ReferenceSpatialStatistics() {
     }
 
     public static double[] computeK(double[][] points,
@@ -22,12 +26,22 @@ public final class SpatialStatistics {
                                     double[] radii,
                                     EdgeCorrection correction) {
         validateInputs(points, window, radii, correction);
+        double[] values = new double[radii.length];
         int count = points.length;
         if (count < 2) return nanArray(radii.length);
-        checkCancelled();
-        return correction == EdgeCorrection.BORDER
-                ? borderK(points, points, true, window, radii)
-                : pairK(points, points, true, window, radii, correction);
+
+        for (int radiusIndex = 0; radiusIndex < radii.length; radiusIndex++) {
+            checkCancelled();
+            double radius = radii[radiusIndex];
+            if (correction == EdgeCorrection.BORDER) {
+                values[radiusIndex] = borderK(
+                        points, points, true, window, radius);
+            } else {
+                values[radiusIndex] = pairK(
+                        points, points, true, window, radius, correction);
+            }
+        }
+        return values;
     }
 
     public static double[] computeCrossK(double[][] source,
@@ -37,13 +51,23 @@ public final class SpatialStatistics {
                                          EdgeCorrection correction) {
         validateInputs(source, window, radii, correction);
         validatePoints(target, window, "target");
+        double[] values = new double[radii.length];
         if (source.length == 0 || target.length == 0) {
             return nanArray(radii.length);
         }
-        checkCancelled();
-        return correction == EdgeCorrection.BORDER
-                ? borderK(source, target, false, window, radii)
-                : pairK(source, target, false, window, radii, correction);
+
+        for (int radiusIndex = 0; radiusIndex < radii.length; radiusIndex++) {
+            checkCancelled();
+            double radius = radii[radiusIndex];
+            if (correction == EdgeCorrection.BORDER) {
+                values[radiusIndex] = borderK(
+                        source, target, false, window, radius);
+            } else {
+                values[radiusIndex] = pairK(
+                        source, target, false, window, radius, correction);
+            }
+        }
+        return values;
     }
 
     /**
@@ -270,133 +294,61 @@ public final class SpatialStatistics {
         }
     }
 
-    /**
-     * K at every radius in one pass over the pairs.
-     *
-     * <p>Each pair's weight is computed once and added to every radius the
-     * pair reaches. For any one radius the pairs added, and the order they
-     * are added in, are exactly those of a separate pass at that radius
-     * starting from zero, so every sum is bit-identical to computing the
-     * radii one at a time. There is deliberately no running total carried
-     * from one radius to the next: floating-point addition is not
-     * associative.</p>
-     */
-    private static double[] pairK(double[][] source,
-                                  double[][] target,
-                                  boolean self,
-                                  RectangularWindow window,
-                                  double[] radii,
-                                  EdgeCorrection correction) {
-        double[] squared = squares(radii);
-        double[] weightedPairs = new double[radii.length];
-        boolean translation = correction == EdgeCorrection.TRANSLATION;
+    private static double pairK(double[][] source,
+                                double[][] target,
+                                boolean self,
+                                RectangularWindow window,
+                                double radius,
+                                EdgeCorrection correction) {
+        double weightedPairs = 0.0;
         for (int sourceIndex = 0; sourceIndex < source.length; sourceIndex++) {
             checkCancelled();
             for (int targetIndex = 0; targetIndex < target.length; targetIndex++) {
                 if (self && sourceIndex == targetIndex) continue;
                 double dx = target[targetIndex][0] - source[sourceIndex][0];
                 double dy = target[targetIndex][1] - source[sourceIndex][1];
-                int first = firstReached(squared, squaredDistance(dx, dy));
-                if (first == radii.length) continue;
-                double weight;
-                if (translation) {
+                if (squaredDistance(dx, dy) > radius * radius) continue;
+                if (correction == EdgeCorrection.TRANSLATION) {
                     double overlap = window.translationOverlap(dx, dy);
-                    // Same test as before: a NaN or empty overlap adds nothing.
-                    if (!(overlap > 0.0)) continue;
-                    weight = window.area() / overlap;
+                    if (overlap > 0.0) weightedPairs += window.area() / overlap;
                 } else {
-                    weight = 1.0;
+                    weightedPairs += 1.0;
                 }
-                for (int i = first; i < radii.length; i++) weightedPairs[i] += weight;
             }
         }
         double denominator = self
                 ? source.length * (double) (source.length - 1)
                 : source.length * (double) target.length;
-        double[] values = new double[radii.length];
-        for (int i = 0; i < radii.length; i++) {
-            values[i] = window.area() * weightedPairs[i] / denominator;
-        }
-        return values;
+        return window.area() * weightedPairs / denominator;
     }
 
-    /**
-     * Border-corrected K at every radius in one pass. A source counts at a
-     * radius when its distance to the window boundary is not below that
-     * radius, as before; counts are integers, so their order cannot matter.
-     */
-    private static double[] borderK(double[][] source,
-                                    double[][] target,
-                                    boolean self,
-                                    RectangularWindow window,
-                                    double[] radii) {
-        double[] squared = squares(radii);
-        int[] eligibleSources = new int[radii.length];
-        // Hits are recorded as +1 at the first radius reached and -1 just past
-        // the last radius at which the source is eligible, then summed.
-        int[] pairChanges = new int[radii.length + 1];
+    private static double borderK(double[][] source,
+                                  double[][] target,
+                                  boolean self,
+                                  RectangularWindow window,
+                                  double radius) {
+        int eligibleSources = 0;
+        int pairCount = 0;
+        double squaredRadius = radius * radius;
         for (int sourceIndex = 0; sourceIndex < source.length; sourceIndex++) {
             checkCancelled();
-            double boundary = window.boundaryDistance(
-                    source[sourceIndex][0], source[sourceIndex][1]);
-            int eligible = 0;
-            while (eligible < radii.length && !(boundary < radii[eligible])) {
-                eligibleSources[eligible]++;
-                eligible++;
+            if (window.boundaryDistance(
+                    source[sourceIndex][0], source[sourceIndex][1]) < radius) {
+                continue;
             }
-            if (eligible == 0) continue;
+            eligibleSources++;
             for (int targetIndex = 0; targetIndex < target.length; targetIndex++) {
                 if (self && sourceIndex == targetIndex) continue;
                 double dx = target[targetIndex][0] - source[sourceIndex][0];
                 double dy = target[targetIndex][1] - source[sourceIndex][1];
-                int first = firstReached(squared, squaredDistance(dx, dy));
-                if (first >= eligible) continue;
-                pairChanges[first]++;
-                pairChanges[eligible]--;
+                if (squaredDistance(dx, dy) <= squaredRadius) pairCount++;
             }
         }
+        if (eligibleSources == 0) return Double.NaN;
         int possibleTargets = self ? target.length - 1 : target.length;
-        double[] values = new double[radii.length];
-        int pairCount = 0;
-        for (int i = 0; i < radii.length; i++) {
-            pairCount += pairChanges[i];
-            if (eligibleSources[i] == 0) {
-                values[i] = Double.NaN;
-            } else if (possibleTargets <= 0) {
-                values[i] = 0.0;
-            } else {
-                values[i] = window.area() * pairCount
-                        / (eligibleSources[i] * (double) possibleTargets);
-            }
-        }
-        return values;
-    }
-
-    /** Squared radii by the same expression the per-radius test used. */
-    private static double[] squares(double[] radii) {
-        double[] squared = new double[radii.length];
-        for (int i = 0; i < radii.length; i++) squared[i] = radii[i] * radii[i];
-        return squared;
-    }
-
-    /**
-     * The smallest index whose squared radius is at least {@code d2} (so the
-     * pair is counted there and at every larger radius), or the array length
-     * when no radius reaches it. Radii are validated strictly increasing and
-     * non-negative, so the squares are non-decreasing.
-     */
-    static int firstReached(double[] squared, double d2) {
-        int low = 0;
-        int high = squared.length;
-        while (low < high) {
-            int middle = (low + high) >>> 1;
-            if (d2 <= squared[middle]) {
-                high = middle;
-            } else {
-                low = middle + 1;
-            }
-        }
-        return low;
+        if (possibleTargets <= 0) return 0.0;
+        return window.area() * pairCount
+                / (eligibleSources * (double) possibleTargets);
     }
 
     private static double[] nearestDistances(double[][] source,
