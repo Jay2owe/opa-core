@@ -4,10 +4,11 @@
 
 Object Proximity Analysis's engine, as an embeddable module.
 
-**Status (2026-09-28): 0.3.0, released and shipping inside the plugin.**
-Adds the rank Monte Carlo envelope with its delivered level, and the
-nearest-neighbour saturation radius. Object Proximity Analysis runs on it with
-87 tests green and **672 golden dumps green, bit-for-bit.**
+**Status (2026-09-30): 0.4.0, released and shipping inside the plugin.**
+Exact distances without the all-pairs scan and K at every radius in one pass:
+4-66x faster on the benchmark scenes, every output identical bit for bit to
+0.3.0. Object Proximity Analysis runs on it with **672 golden dumps green,
+bit-for-bit.**
 
 **Pattern:** `../PLUGIN_CORE_PATTERN.md`
 **Depends on:** `net.imagej:ij` only. **Not** `oc3d-core` — this engine's input
@@ -22,7 +23,7 @@ is a finished label image, and ROI/label ingest stays with the plugin. See
 | `spatial.MonteCarloResult` | observed / expected / envelope / p-value model — **no ImageJ tables** |
 | `spatial.RectangularWindow` `EdgeCorrection` `PatternFunction` `PatternStatus` | the point-pattern vocabulary |
 | `geometry.LabelGeometryExtractor` | label stack to calibrated centroids and exposed voxel faces |
-| `geometry.ProximityEngine` | exact brute-force centre/edge/surface distances, ranked k-nearest partners |
+| `geometry.ProximityEngine` | exact centre/edge/surface distances, ranked k-nearest partners |
 | `geometry.DirectionResult` `ObjectMeasurement` `NeighborMeasurement` | per-direction result model |
 | `CalibrationInfo` `DistanceMode` `ProgressListener` `EngineLimits` `AnalysisCancelledException` | shared value types |
 
@@ -53,7 +54,7 @@ exists to prevent.
 <dependency>
   <groupId>io.github.jay2owe</groupId>
   <artifactId>opa-core</artifactId>
-  <version>0.3.0</version>
+  <version>0.4.0</version>
 </dependency>
 ```
 
@@ -142,9 +143,11 @@ A self-comparison is detected by **reference identity** — pass the same
 neighbour list. Two separately extracted instances of the same image are treated
 as different channels and every object matches itself at distance zero.
 
-Cost grows with the square of the object count and the square of the per-object
-surface size. There is no spatial index; a few hundred large 3D objects per
-channel can take minutes to hours.
+Only pairs that can still enter the k nearest are measured face by face:
+each object's surface bounding box gives an exact lower bound, so the search
+stops as soon as no remaining pair can compete. Cost now grows roughly with the
+object count times the surface size of the few nearest partners, plus a cheap
+bound per pair; 400 3D objects of about 500 surface faces each take seconds.
 
 ## No dialog, no Swing, no `IJ.error`
 
@@ -195,7 +198,7 @@ Goldens live in `../../02 - Object Proximity Analysis/golden/pre-extraction/`.
 ## Citation
 
 > Malcolm, J. (2026). *opa-core: Embeddable object proximity and spatial
-> point-pattern engine* (Version 0.3.0) [Computer software]. Zenodo.
+> point-pattern engine* (Version 0.4.0) [Computer software]. Zenodo.
 > https://doi.org/10.5281/zenodo.21933300
 
 ## Licence

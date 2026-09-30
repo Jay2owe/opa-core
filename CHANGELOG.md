@@ -1,5 +1,61 @@
 # Changelog
 
+## [0.4.0] - 2026-09-30
+
+Faster, with every output unchanged bit for bit.
+
+### Performance
+
+- **Exact distances without the all-pairs scan.** `ProximityEngine` measured
+  every source-target pair face by face although only the k nearest per mode
+  are reported. Each object now carries its surface bounding box; the box
+  distance is an exact lower bound (the same floating-point operations on
+  coordinates that enclose every face, so it can never exceed the true value),
+  candidates are visited nearest bound first and measured only while they can
+  still enter the top k, and ties still break on partner label. Exact contact
+  is summed once per source object, and the apposed-surface scan skips pairs
+  and faces whose box gap exceeds the contact distance.
+- **K at every radius in one pass.** `SpatialStatistics` walked all n^2 pairs
+  once per radius, so each Monte Carlo simulation repeated the pair loop 50
+  times at the default 50 radii. Each pair's weight is now computed once and
+  added to every radius it reaches. For any one radius the same pairs are added
+  in the same order starting from zero, so every sum is identical.
+
+Measured through Object Proximity Analysis's scale benchmark (16 logical
+processors, default parallelism, median of 3; seeded synthetic scenes):
+
+| Case | 0.3.0 | 0.4.0 | Factor |
+|---|---|---|---|
+| 2D discs, 3,200 objects, all five modes, k = 3 | 62.7 s | 2.9 s | 21x |
+| 3D balls, 400 objects, all five modes, k = 3 | 2.8 min | 13.0 s | 13x |
+| Points, 2,000, seven functions, 119 simulations | 41.2 s | 6.0 s | 6.9x |
+| Points, 10,000, seven functions, 119 simulations | not finished at 3 h 34 min | not finished at 98 min | still needs work |
+
+Pattern analysis of 10,000 points is still too slow: K is recomputed for each
+K-based function on every simulated pattern, and the pair loop has no spatial
+index. Both are left for a later version.
+
+Serial (`opa.parallelism=1`) runs gain more: 3D balls at 400 objects fall from
+18.9 min to 17 s.
+
+**Evidence that nothing moved:** the 0.3.0 classes are kept in the test
+sources as `ReferenceProximityEngine` and `ReferenceSpatialStatistics`, and
+`ProximityEnginePruningEquivalenceTest` (4.8 million reported neighbours over
+143,000 pairs, with forced ties, touching and overlapping objects, anisotropic
+and non-dyadic calibration) and `SpatialStatisticsSinglePassEquivalenceTest`
+(98,000 values over every K-based function and all three edge corrections)
+compare them with `Double.doubleToRawLongBits`. The quick V2 envelope
+calibration report is byte-identical before and after, Object Proximity
+Analysis's 672 golden dumps pass unchanged, and every benchmark case's full
+output has the same SHA-256 as on 0.3.0.
+
+### Added
+
+- `ProximityEngine.analyze(source, target, modes, k, contact, ProgressListener)`
+  reports the fraction of source objects finished, so a long direction can
+  show movement. The five-argument method is unchanged and delegates with no
+  listener. Calls to the listener are serialised and never go backwards.
+
 ## [0.3.0] - 2026-08-20
 
 ### Fixed

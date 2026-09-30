@@ -14,7 +14,7 @@
 
 	<groupId>io.github.jay2owe</groupId>
 	<artifactId>opa-core</artifactId>
-	<version>0.4.0-SNAPSHOT</version>
+	<version>0.4.0</version>
 
 	<name>opa-core</name>
 	<description>Object proximity and 2D point-pattern engine, as an embeddable module. Never shipped as a jar.</description>
