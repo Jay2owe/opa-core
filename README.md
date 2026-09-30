@@ -199,7 +199,7 @@ Goldens live in `../../02 - Object Proximity Analysis/golden/pre-extraction/`.
 
 > Malcolm, J. (2026). *opa-core: Embeddable object proximity and spatial
 > point-pattern engine* (Version 0.4.0) [Computer software]. Zenodo.
-> https://doi.org/10.5281/zenodo.21933300
+> https://doi.org/10.5281/zenodo.23055735
 
 ## Licence
 
